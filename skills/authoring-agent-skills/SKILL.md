@@ -2,7 +2,7 @@
 name: authoring-agent-skills
 description: "Designs, scaffolds, lints and evaluates agent skills and plugins to cross-harness best practice (scripts, evals, versioning, security). Use when creating a skill, SKILL.md or plugin (including capturing a workflow as a reusable skill), splitting or restructuring one, choosing skill vs MCP vs plugin vs hook, or reviewing a skill before release. Not for ordinary code or docs."
 metadata:
-  version: 1.0.2
+  version: 1.1.0
 ---
 # Authoring agent skills
 
@@ -48,13 +48,13 @@ Add `--plugin` to wrap the skill in portable + Claude + Cursor plugin manifests.
 
 ## 5. Author
 Read `references/authoring.md`. Hard rules:
-- Body < 500 lines and ~5k tokens; critical rules first (only the top ~5k tokens survive compaction).
+- Body < 500 lines and ~5k tokens; critical rules first (after compaction some hosts keep only the first ~5k tokens of a skill).
 - Numbered steps + a copyable checklist; one default plus one escape hatch, never a menu.
 - Only add what the model gets wrong without it (the gaps from step 3).
 - Fragile, bulk or must-be-identical work goes in `scripts/`: non-interactive, `--help`, JSON on stdout, errors on stderr, distinct exit codes, idempotent, `--dry-run` if destructive. Say "Run X", never "See X".
 - Destructive or batch work: plan → validate script → apply → verify.
 - References one level deep, each with its load condition ("read X if Y").
-- Generic verbs ("read the file", "run `python3 scripts/x.py`"), relative forward-slash paths, no harness tool names.
+- Generic verbs ("read the file", "run `python3 scripts/<name>.py`"), relative forward-slash paths, no harness tool names.
 - Frontmatter: only `name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`, unless the target host needs more (e.g. `disable-model-invocation: true` for side-effecting skills).
 - No secrets in the skill; scripts read them from env or the host's secret store.
 
@@ -62,10 +62,10 @@ Read `references/authoring.md`. Hard rules:
 If the skill is multi-step, long-running or stateful, read `references/runtime.md` and add:
 - A progress/state file the skill re-reads on resume (survives compaction).
 - One structured error format (`ERROR [code] … resolves: … next: …`), retry cap (3), and stop-and-ask conditions.
-- A `learnings/` flow: agent proposes in `learnings/proposed/` using `assets/learning-entry.md`, a human accepts. Never rewrite learnings wholesale.
+- A `learnings/` flow: agent proposes in `learnings/proposed/` using `assets/skill/assets/learning-entry.md` (the scaffold copies it into the new skill's `assets/`), a human accepts. Never rewrite learnings wholesale.
 
 ## 7. Lint loop
-Run: `python3 scripts/lint_skill.py <skill-dir>` (add `--portable` for skills shipped to claude.ai or other hosts).
+Run: `python3 scripts/lint_skill.py <skill-dir>` (add `--portable` for skills shipped to claude.ai or other hosts; add `--evals-dir <dir>` if the evals are kept outside the skill folder).
 Fix every error; fix or consciously accept each warning. Re-run until exit code 0. Max 3 rounds, then report the remaining issues.
 
 ## 8. Evaluate
@@ -75,7 +75,7 @@ Fix every error; fix or consciously accept each warning. Re-run until exit code 
 - If you cannot run evals in this harness, say so and leave the eval files for the user.
 
 ## 9. Ship
-Read `references/ship.md`. Then:
+Read `references/ship.md`. Read `references/distribute.md` only if the skill ships through a marketplace or to other teams, needs usage telemetry, or is being renamed or retired. Then:
 - Side-effecting skill → user-invoked only on every target host.
 - Version: SemVer in `metadata.version` (and plugin manifests); entry in `CHANGELOG.md`. Renamed skill → leave a redirect from `assets/redirect-skill.md` under the old name.
 - User config via the host's plugin settings; state in the plugin data directory, never the install directory.

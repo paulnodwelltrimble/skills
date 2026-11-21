@@ -5,7 +5,7 @@ Usage:
   python3 scripts/scaffold.py --name pdf-forms --dest .agents/skills --description "Fills PDF forms ... Use when ..."
   python3 scripts/scaffold.py --name pdf-forms --dest plugins --description "..." --plugin   # plugins/pdf-forms/{manifests,skills/pdf-forms}
 Flags: --dry-run (list files, write nothing), --force (overwrite existing files).
-Prints JSON {"created" | "would_create": [...], "skill_dir": "..."}. Exit codes: 0 ok, 1 files exist (no --force), 2 bad input.
+Prints JSON {"created" | "would_create": [...], "skill_dir": "..."}. Errors go to stderr. Exit codes: 0 ok, 1 files exist (no --force), 2 bad input.
 """
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def main() -> int:
 
     existing = [str(d) for _, d in plan if d.exists()]
     if existing and not args.force:
-        print(json.dumps({"error": "files exist; re-run with --force to overwrite", "existing": existing}))
+        print(json.dumps({"error": "files exist; re-run with --force to overwrite", "existing": existing}), file=sys.stderr)
         return 1
     if not args.dry_run:
         for src, dst in plan:

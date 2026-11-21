@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Lint a skill directory against the best-practice hard rules.
 
-Usage: python3 scripts/lint_skill.py <skill-dir> [--portable]
-  --portable  unknown frontmatter keys are errors (claude.ai / Skills API reject them).
+Usage: python3 scripts/lint_skill.py <skill-dir> [--portable] [--evals-dir DIR]
+  --portable   unknown frontmatter keys are errors (claude.ai / Skills API reject them).
+  --evals-dir  folder holding evals.json and trigger_evals.json (default: <skill-dir>/evals).
 Prints JSON {"errors": [...], "warnings": [...], "stats": {...}} on stdout.
 Exit codes: 0 clean or warnings only, 1 errors, 2 bad input.
 """
@@ -19,7 +20,8 @@ KNOWN_HOST_KEYS = {"disable-model-invocation", "user-invocable", "paths", "when_
                    "agent", "model", "effort", "hooks", "argument-hint", "disallowed-tools"}
 SIDE_EFFECT = re.compile(r"\b(deploy|publish|push|send|delete|drop|merge|post to|email)\b", re.I)
 HARNESS_TOOLS = re.compile(r"\b(StrReplace|Bash\(|the (Read|Write|Grep|Glob|Edit) tool|activate_skill)\b")
-LINK = re.compile(r"\]\(([^)#\s]+)\)|`((?:references|scripts|assets)/[^`\s]+)`")
+# A Markdown link target, or a references/, scripts/ or assets/ path anywhere in the text (so inside a command too).
+LINK = re.compile(r"\]\(([^)#\s]+)\)|(?<![\w./<>-])((?:references|scripts|assets)/[^`\s)\"',;]*[^`\s)\"',;.:])")
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, str], str] | None:
@@ -41,7 +43,7 @@ def parse_frontmatter(text: str) -> tuple[dict[str, str], str] | None:
     return fm, text[end + 4:].lstrip("\n")
 
 
-def lint(skill: Path, portable: bool) -> dict:
+def lint(skill: Path, portable: bool, evals_dir: Path | None = None) -> dict:
     errors: list[str] = []
     warns: list[str] = []
     md = skill / "SKILL.md"
@@ -118,7 +120,7 @@ def lint(skill: Path, portable: bool) -> dict:
         warns.append("description mentions a side effect; consider disable-model-invocation: true (user-invoked only)")
 
     for f in ("evals/evals.json", "evals/trigger_evals.json"):
-        p = skill / f
+        p = (evals_dir or skill / "evals") / Path(f).name
         if not p.is_file():
             warns.append(f"missing {f}")
             continue
@@ -128,6 +130,9 @@ def lint(skill: Path, portable: bool) -> dict:
             errors.append(f"{f}: invalid JSON ({e})")
             continue
         if f.endswith("trigger_evals.json"):
+            if not isinstance(data, list) or not all(isinstance(q, dict) for q in data):
+                errors.append(f"{f}: must be a JSON array of {{\"query\", \"should_trigger\"}} objects")
+                continue
             pos = sum(1 for q in data if q.get("should_trigger") is True)
             neg = sum(1 for q in data if q.get("should_trigger") is False)
             if pos < 8 or neg < 8:
@@ -140,11 +145,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("skill_dir", type=Path)
     ap.add_argument("--portable", action="store_true")
+    ap.add_argument("--evals-dir", type=Path)
     args = ap.parse_args()
     if not args.skill_dir.is_dir():
         print(f"not a directory: {args.skill_dir}", file=sys.stderr)
         return 2
-    result = lint(args.skill_dir, args.portable)
+    result = lint(args.skill_dir, args.portable, args.evals_dir)
     print(json.dumps(result, indent=2))
     return 1 if result["errors"] else 0
 

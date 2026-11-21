@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -10,6 +11,7 @@ from pathlib import Path
 
 SKILL = Path(__file__).resolve().parents[2] / "skills" / "authoring-agent-skills"
 HERE = SKILL / "scripts"
+DEV = Path(__file__).resolve().parent
 
 
 def run(script: str, *args: str) -> tuple[int, dict]:
@@ -20,8 +22,8 @@ def run(script: str, *args: str) -> tuple[int, dict]:
 with tempfile.TemporaryDirectory() as tmp:
     t = Path(tmp)
 
-    code, out = run("lint_skill.py", str(SKILL))
-    assert code == 0, f"this skill must lint clean: {out}"
+    code, out = run("lint_skill.py", str(SKILL), "--evals-dir", str(DEV / "evals"))
+    assert code == 0 and not out["warnings"], f"this skill must lint clean: {out}"
 
     code, out = run("scaffold.py", "--name", "demo-skill", "--dest", tmp, "--description", "Does X. Use when Y. Not for Z.", "--plugin")
     sk = t / "demo-skill" / "skills" / "demo-skill"
@@ -29,6 +31,17 @@ with tempfile.TemporaryDirectory() as tmp:
     assert run("scaffold.py", "--name", "demo-skill", "--dest", tmp, "--description", "x", "--plugin")[0] == 1, "must refuse overwrite"
     code, out = run("lint_skill.py", str(sk))
     assert code == 1 and any("TODO" in e for e in out["errors"]), "unfilled template TODO paths must fail lint"
+    assert any("scripts/validate.py" in e for e in out["errors"]), "a missing script named inside a command must fail lint"
+    assert (sk / "assets" / "learning-entry.md").is_file(), "the template the learnings README names must be scaffolded"
+
+    # the eval 3 fixture carries planted defects; the linter has to find each one
+    fx = t / "changelog-writer"
+    shutil.copytree(DEV / "evals" / "files" / "fixture-skills" / "changelog-writer", fx)
+    (fx / "SKILL.fixture.md").rename(fx / "SKILL.md")
+    code, out = run("lint_skill.py", str(fx))
+    found = " ".join(out["errors"] + out["warnings"])
+    planted = ("interactive prompt", "scripts/format_entries.py", "references/style.md", "third person", "'Use when", "Grep tool", "missing evals/evals.json")
+    assert code == 1 and all(s in found for s in planted), out
 
     bad = t / "bad-skill"
     (bad / "scripts").mkdir(parents=True)
@@ -37,6 +50,10 @@ with tempfile.TemporaryDirectory() as tmp:
     code, out = run("lint_skill.py", str(bad), "--portable")
     errs = " ".join(out["errors"])
     assert code == 1 and all(s in errs for s in ("must match directory", "lines", "'foo'", "interactive")), out
+    (bad / "evals").mkdir()
+    (bad / "evals" / "trigger_evals.json").write_text('{"queries": []}')
+    code, out = run("lint_skill.py", str(bad))
+    assert code == 1 and any("must be a JSON array" in e for e in out["errors"]), out
 
     runs = t / "runs.jsonl"
     runs.write_text("\n".join(json.dumps({"query": f"q{i}", "should_trigger": i % 2 == 0, "triggered": i % 2 == 0 or i == 1})

@@ -25,12 +25,16 @@
     },
     {
       "id": 3,
-      "prompt": "Review the code-review-and-quality skill before we share it with other teams.",
-      "expected_output": "Lint run first; findings reported against the rules; trigger/task evals proposed since it has none",
-      "files": [],
+      "prompt": "Review the changelog-writer skill in .agents/skills/ before we share it with other teams.",
+      "expected_output": "Lint run first; findings reported against the rules, including the planted defects; trigger/task evals proposed since it has none",
+      "files": [
+        "evals/files/fixture-skills/changelog-writer/"
+      ],
       "expectations": [
         "lint_skill.py was run on the skill before any edit",
         "Report flags the missing evals/evals.json and evals/trigger_evals.json",
+        "Report flags the interactive prompt in scripts/collect.py",
+        "Report flags that scripts/format_entries.py and references/style.md do not exist",
         "Every reported issue cites a concrete file/line or lint message"
       ]
     },

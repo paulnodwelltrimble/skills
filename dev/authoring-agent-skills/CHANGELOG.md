@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0 (2026-11-21)
+- Lint: a `references/`, `scripts/` or `assets/` path is checked wherever it appears, so a missing script named inside a command (`python3 scripts/x.py`) is now an error. Before, only a path directly after a backtick was checked.
+- Lint: new `--evals-dir DIR` for repositories that keep evals outside the skill folder.
+- Lint: a `trigger_evals.json` that is not an array of objects is reported as an error; it used to raise a traceback.
+- Scaffold: the new skill gets `assets/learning-entry.md`, which its `learnings/README.md` names. The "files exist" error goes to stderr.
+- References: `ship.md` now holds configuration, versioning and security. Telemetry, deprecation and distribution moved to the new `distribute.md`, which step 9 loads only when needed.
+- References are edited by hand from now on. The page they were generated from is lost, so `sync_references.py` and the "generated, do not edit" headers are removed.
+- SKILL.md: the 5k-token compaction limit is described as the behaviour of some hosts. Removed a dated claim from the distribution reference.
+- Eval 3 reviews a fixture skill, `evals/files/fixture-skills/changelog-writer/`, with planted defects; `selftest.py` checks the linter finds each one.
+- Trigger evals: three queries added (two positive, one negative) that the description was never tuned on. The 1.0.1 description fix added words close to a failed query, which the skill's own rule forbids, so the 18/18 figure below is not a held-out score.
+- Not run: task evals and trigger evals. Re-run the trigger evals and record the train and test pass rates before changing the description again.
+
 ## 1.0.2 (2026-11-21)
 - Packaged for this repository: the skill is in `skills/authoring-agent-skills/`; evals, learnings, `selftest.py` and `sync_references.py` are in `dev/authoring-agent-skills/`.
 - Commands use `python3`, which is the name present on Linux and macOS.
