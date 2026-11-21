@@ -1,0 +1,49 @@
+{
+  "skill_name": "authoring-agent-skills",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Make a skill that lets the agent query our Jira with my API token and summarise sprint risk.",
+      "expected_output": "Recommends an MCP server (auth + live data) paired with a thin skill; token never in the skill",
+      "files": [],
+      "expectations": [
+        "Decision names an MCP server (or existing Jira MCP) for auth/live data",
+        "No API token or secret appears in any created SKILL.md",
+        "lint_skill.py exits 0 on the created skill"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Create a deploy skill that supports AWS, GCP and Azure.",
+      "expected_output": "One skill with references per provider, user-invoked only",
+      "files": [],
+      "expectations": [
+        "Exactly one new skill directory is created, with references/aws.md, references/gcp.md, references/azure.md (or equivalent)",
+        "SKILL.md frontmatter has disable-model-invocation: true",
+        "Destructive steps go through a validate script before apply"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review the code-review-and-quality skill before we share it with other teams.",
+      "expected_output": "Lint run first; findings reported against the rules; trigger/task evals proposed since it has none",
+      "files": [],
+      "expectations": [
+        "lint_skill.py was run on the skill before any edit",
+        "Report flags the missing evals/evals.json and evals/trigger_evals.json",
+        "Every reported issue cites a concrete file/line or lint message"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Add a rule that we always run ruff before committing.",
+      "expected_output": "Recommends a hook or always-on rule, not a skill, and stops",
+      "files": [],
+      "expectations": [
+        "No new skill directory is created",
+        "Response recommends an always-on rule or AGENTS.md entry",
+        "Creates or recommends an enforcement mechanism (git/agent hook), not only an instruction, because 'always' means it must happen every time"
+      ]
+    }
+  ]
+}
